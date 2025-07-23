@@ -1,0 +1,35 @@
+# Core dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# Azure services
+azure-search-documents
+azure-storage-blob
+azure-identity
+azure-core
+
+# OpenAI
+openai
+httpx
+
+# Document processing
+PyMuPDF
+python-docx
+python-pptx
+Pillow
+
+# Text processing
+langchain
+langchain-text-splitters
+tiktoken
+
+# Utilities
+python-dotenv
+pathlib2
+typing-extensions
+
+# Development and testing
+pytest
+pytest-asyncio
