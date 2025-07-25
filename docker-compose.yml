@@ -1,45 +1,32 @@
 version: '3.8'
-
 services:
-  rag2-system:
-    build: .
-    container_name: rag2-system
+  rag:
+    build: ./RAG
     ports:
-      - "8001:8001"  # Ingestion Pipeline
-      - "8002:8002"  # RAG API
-    environment:
-      - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
+      - "8002:8002"
     env_file:
       - .env
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - rag2-network
+    working_dir: /app
 
-  # Optional: Redis for caching (uncomment if needed)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: rag2-redis
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   restart: unless-stopped
-  #   networks:
-  #     - rag2-network
+  ingestion:
+    build: ./Ingestion_pipeline
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    working_dir: /app
 
-networks:
-  rag2-network:
-    driver: bridge
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001"
+    depends_on:
+      - rag
+      - ingestion
 
-volumes:
-  # redis_data: 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend 

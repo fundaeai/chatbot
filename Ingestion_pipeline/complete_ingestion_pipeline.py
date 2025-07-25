@@ -19,6 +19,8 @@ from pipeline import MultimodalPipeline
 from pipeline.utils.config import Config
 from pipeline.services.embedding_service import EmbeddingService
 
+import re
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -95,7 +97,6 @@ class ChunkingService:
     
     def _extract_page_number(self, chunk: str) -> int:
         """Extract page number from chunk content"""
-        import re
         page_match = re.search(r'--- Page (\d+) ---', chunk)
         return int(page_match.group(1)) if page_match else 0
 
@@ -159,22 +160,29 @@ class AzureAISearchService:
             docs = []
             for chunk in chunks:
                 safe_filename = metadata['filename'].replace('.', '_')
+                # Sanitize the id
+                safe_id = sanitize_key(f"{safe_filename}_{chunk['id']}_{uuid.uuid4().hex[:8]}")
                 doc = {
-                    "id": f"{safe_filename}_{chunk['id']}_{uuid.uuid4().hex[:8]}",
+                    "id": safe_id,
                     "content": chunk['content'],
-                    "chunk_index": chunk['chunk_index'],
                     "filename": metadata['filename'],
-                    "page_number": chunk['page_number'],
-                    "chunk_type": chunk['chunk_type'],
+                    "chunk_index": chunk['chunk_index'],
+                    "page_number": chunk.get('page_number', 0),
+                    "chunk_type": chunk.get('chunk_type', 'text'),
                     "tags": metadata.get('tags', []),
                     "upload_date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                 }
                 docs.append(doc)
-            
             result = self.search_client.upload_documents(docs)
-            logger.info(f"Uploaded {len(docs)} chunks to Azure AI Search")
-            return True
-            
+            # Log upload result for each doc
+            all_success = True
+            for idx, res in enumerate(result):
+                if hasattr(res, 'succeeded') and not res.succeeded:
+                    logger.error(f"Failed to upload doc: {docs[idx]['id']}, error: {getattr(res, 'error_message', 'Unknown error')}")
+                    all_success = False
+                else:
+                    logger.info(f"Uploaded doc: {docs[idx]['id']} to Azure AI Search")
+            return all_success
         except Exception as e:
             logger.error(f"Error uploading chunks to Azure AI Search: {e}")
             return False
@@ -247,6 +255,10 @@ class StorageChecker:
         except Exception as e:
             logger.error(f"Error uploading file to storage: {e}")
             return False
+
+def sanitize_key(key: str) -> str:
+    """Sanitize document key for Azure AI Search (letters, digits, _, -, =)"""
+    return re.sub(r'[^A-Za-z0-9_\-=]', '_', key)
 
 class CompleteIngestionPipeline:
     """Complete ingestion pipeline with storage checking and vector storage"""

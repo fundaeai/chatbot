@@ -13,6 +13,8 @@ from azure.search.documents.models import QueryType
 from openai import AzureOpenAI
 from config import config
 from config.hyperparameters import RAGHyperparameters
+from docx import Document
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +62,10 @@ class RetrievalComponent:
             start_time = time.time()
             logger.info(f"Retrieving documents for query: '{query}'")
             
-            if search_type == "semantic":
-                results = self._semantic_search(query, top_k)
-            elif search_type == "keyword":
+            # Force keyword search for all types
+            if search_type in ["semantic", "hybrid"]:
+                logger.warning(f"Vector/hybrid search requested, but index does not support vector search. Using keyword search instead.")
                 results = self._keyword_search(query, top_k)
-            else:  # hybrid
-                results = self._hybrid_search(query, top_k)
             
             retrieval_time = time.time() - start_time
             logger.info(f"Retrieved {len(results)} documents in {retrieval_time:.3f}s")
@@ -122,7 +122,7 @@ class RetrievalComponent:
         try:
             # Generate query embedding
             query_embedding = self._generate_embedding(query)
-            
+
             # Try vector search first
             try:
                 search_results = self.search_client.search(
@@ -137,21 +137,21 @@ class RetrievalComponent:
                     top=top_k,
                     query_type=QueryType.SIMPLE
                 )
-                
+
                 results = self._process_search_results(search_results)
-                
+
                 # If vector search found results, return them
                 if results:
                     logger.info(f"Hybrid search (vector) found {len(results)} results")
                     return results
-                    
+
             except Exception as vector_error:
                 logger.warning(f"Vector search failed, falling back to keyword: {vector_error}")
-            
+
             # Fall back to keyword search if vector search fails or returns no results
             logger.info("Falling back to keyword search for hybrid")
             return self._keyword_search(query, top_k)
-            
+
         except Exception as e:
             logger.error(f"Error in hybrid search: {e}")
             return []
@@ -196,3 +196,31 @@ class RetrievalComponent:
         except Exception as e:
             logger.error(f"Error getting statistics: {e}")
             return {'error': str(e)} 
+
+def extract_content(self, file_path: Path) -> Dict[str, Any]:
+    """Extract content from DOCX file"""
+    try:
+        logger.info(f"Extracting content from DOCX: {file_path}")
+        doc = Document(file_path)
+        text = []
+        for para in doc.paragraphs:
+            text.append(para.text)
+        full_text = '\n'.join(text)
+        return {
+            'success': True,
+            'text_content': f"DOCX content from {file_path.name}",
+            'visual_elements': [],
+            'metadata': {
+                'filename': file_path.name,
+                'file_type': '.docx',
+                'extractor': 'DOCXExtractor'
+            },
+            'filename': file_path.name,
+        }
+    except Exception as e:
+        logger.error(f"Error extracting DOCX content from {file_path}: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'filename': file_path.name,
+        } 

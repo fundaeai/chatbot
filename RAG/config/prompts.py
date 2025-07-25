@@ -4,6 +4,8 @@ Centralized Prompts for RAG System
 All AI prompts in one place for easy experimentation and tuning
 """
 
+import os
+
 class RAGPrompts:
     """Centralized prompts for RAG retrieval and generation"""
     

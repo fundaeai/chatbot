@@ -18,10 +18,10 @@ class Config:
     AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
     
     # Model Configuration
-    GPT41_MODEL = os.getenv('GPT41_MODEL', 'gpt-4-vision-preview')
-    GPT41_DEPLOYMENT_NAME = os.getenv('GPT41_DEPLOYMENT_NAME', 'gpt-4-vision-preview')
-    EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'text-embedding-ada-002')
-    EMBEDDING_DEPLOYMENT_NAME = os.getenv('EMBEDDING_DEPLOYMENT_NAME', 'text-embedding-ada-002')
+    GPT41_MODEL = os.getenv('GPT41_MODEL', 'gpt-4.1')
+    GPT41_DEPLOYMENT_NAME = os.getenv('GPT41_DEPLOYMENT_NAME', 'gpt-4.1')
+    EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
+    EMBEDDING_DEPLOYMENT_NAME = os.getenv('EMBEDDING_DEPLOYMENT_NAME', EMBEDDING_MODEL)
     
     # Azure AI Search Configuration
     AZURE_SEARCH_ENDPOINT = os.getenv('AZURE_SEARCH_ENDPOINT')

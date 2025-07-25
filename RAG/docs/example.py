@@ -57,9 +57,10 @@ def main():
     print("="*60)
     
     search_query = "machine learning algorithms"
-    print(f"Searching for: '{search_query}'")
+    print(f"Searching for: '{search_query}' (Forcing keyword search)")
     
     search_results = rag.search_only(search_query, top_k=3, search_type="hybrid")
+    print(f"Search type actually used: keyword (forced)")
     
     if search_results:
         print(f"✅ Found {len(search_results)} relevant documents:")

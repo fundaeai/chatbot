@@ -1,38 +1,29 @@
-# RAG2.0 - Production Dockerfile
-FROM python:3.11-slim
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PIP_NO_CACHE_DIR=1
-
-# Set work directory
+FROM python:3.9-slim as backend
 WORKDIR /app
+COPY Ingestion_pipeline/ Ingestion_pipeline/
+COPY RAG/ RAG/
+RUN pip install --upgrade pip && \
+    pip install -r Ingestion_pipeline/requirements.txt && \
+    pip install -r RAG/requirements.txt && \
+    pip install supervisor flask
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:18 as frontend-build
+WORKDIR /app
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
+COPY frontend/ ./frontend/
+RUN cd frontend && npm run build
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
-
-# Expose ports
-EXPOSE 8001 8002
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8002/health || exit 1
-
-# Default command
-CMD ["python", "main.py"] 
+FROM python:3.9-slim
+WORKDIR /app
+COPY --from=backend /app /app
+COPY --from=frontend-build /app/frontend/build /app/frontend/build
+RUN pip install --upgrade pip && \
+    pip install -r Ingestion_pipeline/requirements.txt && \
+    pip install -r RAG/requirements.txt && \
+    pip install supervisor flask
+COPY serve_frontend.py /app/serve_frontend.py
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+EXPOSE 3000
+CMD ["/usr/local/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 
